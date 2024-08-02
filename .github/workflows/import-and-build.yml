@@ -1,0 +1,124 @@
+name: Pull RustDesk master branch and build Android
+
+on:
+  schedule:
+    # schedule build every night
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+env:
+  RD_BRANCH: master
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: write
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout source code
+        run: |
+          git clone \
+            "https://github.com/${{ github.repository }}" \
+            -b "${{ env.RD_BRANCH }}" \
+            "${{ github.workspace }}"
+
+      - name: Set deploy key, user name and email
+        env:
+          DEPLOYKEY: ${{ secrets.DEPLOYKEY }}
+        run: |
+          git config user.name "rustdesk-adb-backup"
+          git config user.email "rustdesk-adb-backup@noreply.users.github.com"
+          #
+          mkdir -p "${HOME}/.ssh"
+          #
+          cat >"${HOME}/.ssh/deploy-key" <<.a
+          $DEPLOYKEY
+          .a
+          #
+          cat >"${HOME}/.ssh/config" <<.b
+            Host github.com
+              HostName github.com
+              IdentityFile ~/.ssh/deploy-key
+          .b
+          #
+          chmod 0600 "${HOME}/.ssh/config"
+          chmod 0600 "${HOME}/.ssh/deploy-key"
+          #
+          REPO_SSH="$(git remote get-url origin | sed 's|https://github.com/|git@github.com:|')"
+          git remote set-url origin --push "${REPO_SSH}"
+          UPSTREAM_REPO="$(curl -s "https://api.github.com/repos/${{ github.repository }}" | jq -r '.parent.full_name')"
+          git remote add upstream "https://github.com/${UPSTREAM_REPO}"
+          git remote -vv
+
+      - name: Import upstream changes
+        run: |
+          git fetch upstream refs/heads/master
+          git merge --ff FETCH_HEAD
+
+      - name: Generate workflow definitions
+        run: |
+          # Filter flutter-build.yml to have only Android builds
+          yq \
+            e \
+            '.jobs = (.jobs | to_entries() | filter(.key == ("generate-bridge-linux", "build-rustdesk-android")) | from_entries)' \
+            .github/workflows/flutter-build.yml \
+            1>.github/workflows/flutter-build-android.yml
+          # Replace all release builds with debug
+          yq \
+            e \
+            '.jobs.build-rustdesk-android.strategy.matrix.job[].reltype = "debug"' \
+            -i \
+            .github/workflows/flutter-build-android.yml
+          # Add build suffix
+          yq \
+            e \
+            '.jobs.build-rustdesk-android.strategy.matrix.job[].suffix = "-backupable"' \
+            -i \
+            .github/workflows/flutter-build-android.yml
+          # Add x86-android
+          yq \
+            e \
+            '.jobs.build-rustdesk-android.strategy.matrix.job += [ .jobs.build-rustdesk-android.strategy.matrix.job[] | select(.arch == "x86_64") | .arch = "x86" | .target = "i686-linux-android" ]' \
+            -i \
+            .github/workflows/flutter-build-android.yml
+          # Filter flutter-nightly to new workflow
+          sed \
+            -e 's/flutter-build.yml/flutter-build-android.yml/' \
+            .github/workflows/flutter-nightly.yml \
+            1>.github/workflows/flutter-nightly-android.yml
+          # Disable cron schedule - only parent action is scheduled by cron
+            yq \
+              e \
+              '.on = (.on | to_entries() | filter(.key != ("schedule")) | from_entries)' \
+              -i \
+              .github/workflows/flutter-nightly-android.yml
+          # Add permission to m9dify releases and commits
+          yq \
+            e \
+            '.jobs.run-flutter-nightly-build.permissions.contents = "write"' \
+            -i \
+            .github/workflows/flutter-nightly-android.yml
+          # Add and commit new changes
+          git add \
+            .github/workflows/flutter-build-android.yml \
+            .github/workflows/flutter-nightly-android.yml
+          if [ -n "$(git diff --cached)" ]; then
+            git commit -m "Filter flutter-build.yml to have only Android debug builds"
+            echo "NEED_REBUILD=true" >> "$GITHUB_ENV"
+          fi
+
+      - name: Push changes to rustdesk branch
+        if: env.NEED_REBUILD == 'true'
+        run: |
+          git push
+
+      - name: Start build
+        if: env.NEED_REBUILD == 'true'
+        run: |
+          gh workflow run \
+            flutter-nightly-android.yml \
+            -R "${{ github.repository }}" \
+            --ref "${{ env.RD_BRANCH }}"
