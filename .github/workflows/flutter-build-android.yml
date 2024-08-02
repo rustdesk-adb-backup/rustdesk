@@ -31,7 +31,7 @@ env:
   # vcpkg version: 2024.07.12
   VCPKG_COMMIT_ID: "1de2026f28ead93ff1773e6e680387643e914ea1"
   VERSION: "1.3.0"
-  NDK_VERSION: "r26d"
+  NDK_VERSION: "r27"
   #signing keys env variable checks
   ANDROID_SIGNING_KEY: "${{ secrets.ANDROID_SIGNING_KEY }}"
   MACOS_P12_BASE64: "${{ secrets.MACOS_P12_BASE64 }}"
@@ -114,22 +114,33 @@ jobs:
         with:
           vcpkgDirectory: /opt/artifacts/vcpkg
           vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
+          doNotCache: false
       - name: Install vcpkg dependencies
         run: |
           case ${{ matrix.job.target }} in
             aarch64-linux-android)
-              ./flutter/build_android_deps.sh arm64-v8a
+              ANDROID_TARGET=arm64-v8a
             ;;
             armv7-linux-androideabi)
-              ./flutter/build_android_deps.sh armeabi-v7a
+              ANDROID_TARGET=armeabi-v7a
             ;;
             x86_64-linux-android)
-              ./flutter/build_android_deps.sh x86_64
+              ANDROID_TARGET=x86_64
             ;;
             i686-linux-android)
-              ./flutter/build_android_deps.sh x86
+              ANDROID_TARGET=x86
             ;;
           esac
+          if ! ./flutter/build_android_deps.sh "${ANDROID_TARGET}"; then
+            find "${VCPKG_ROOT}/" -name "*.log" | while read -r _1; do
+              echo "$_1:"
+              echo "======"
+              cat "$_1"
+              echo "======"
+              echo ""
+            done
+            exit 1
+          fi
         shell: bash
       - name: Restore bridge files
         uses: actions/download-artifact@master
