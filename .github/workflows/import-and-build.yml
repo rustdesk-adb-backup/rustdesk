@@ -5,6 +5,11 @@ on:
     # schedule build every night
     - cron: "0 0 * * *"
   workflow_dispatch:
+    inputs:
+      rebuild-only:
+        type: boolean
+        default: false
+        description: "Perform rebuild only without importing new upstream sources"
 
 env:
   RD_BRANCH: master
@@ -26,6 +31,7 @@ jobs:
             "${{ github.workspace }}"
 
       - name: Set deploy key, user name and email
+        if: ${{ github.event.inputs.rebuild-only == 'false' }}
         env:
           DEPLOYKEY: ${{ secrets.DEPLOYKEY }}
         run: |
@@ -54,11 +60,13 @@ jobs:
           git remote -vv
 
       - name: Import upstream changes
+        if: ${{ github.event.inputs.rebuild-only == 'false' }}
         run: |
           git fetch upstream refs/heads/master
           git merge --ff FETCH_HEAD
 
       - name: Generate workflow definitions
+        if: ${{ github.event.inputs.rebuild-only == 'false' }}
         run: |
           # Filter flutter-build.yml to have only Android builds
           yq \
@@ -111,12 +119,12 @@ jobs:
           fi
 
       - name: Push changes to rustdesk branch
-        if: env.NEED_REBUILD == 'true'
+        if: ${{ env.NEED_REBUILD == 'true' && github.event.inputs.rebuild-only == 'false' }}
         run: |
           git push
 
       - name: Start build
-        if: env.NEED_REBUILD == 'true'
+        if: ${{ env.NEED_REBUILD == 'true' || github.event.inputs.rebuild-only == 'true' }}
         run: |
           gh workflow run \
             flutter-nightly-android.yml \
