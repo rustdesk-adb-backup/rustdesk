@@ -71,7 +71,7 @@ jobs:
           # Filter flutter-build.yml to have only Android builds
           yq \
             e \
-            '.jobs = (.jobs | to_entries() | filter(.key == ("generate-bridge-linux", "build-rustdesk-android")) | from_entries)' \
+            '.jobs = (.jobs | to_entries() | filter(.key == ("generate-bridge-linux", "build-rustdesk-android", "build-rustdesk-android-universal")) | from_entries)' \
             .github/workflows/flutter-build.yml \
             1>.github/workflows/flutter-build-android.yml
           # Replace all release builds with debug
@@ -90,6 +90,24 @@ jobs:
           yq \
             e \
             '.jobs.build-rustdesk-android.strategy.matrix.job += [ .jobs.build-rustdesk-android.strategy.matrix.job[] | select(.arch == "x86_64") | .arch = "x86" | .target = "i686-linux-android" ]' \
+            -i \
+            .github/workflows/flutter-build-android.yml
+          # Make universal build debuggable
+          yq \
+            e \
+            '.jobs.build-rustdesk-android-universal.env.reltype = "debug"' \
+            -i \
+            .github/workflows/flutter-build-android.yml
+          # Add android-x86 to universal apk
+          yq \
+            e \
+            '.jobs.build-rustdesk-android-universal.env.x86_target = ",android-x86"' \
+            -i \
+            .github/workflows/flutter-build-android.yml
+          # Add build suffix to universal apk
+          yq \
+            e \
+            '.jobs.build-rustdesk-android-universal.env.suffix = "-backupable"' \
             -i \
             .github/workflows/flutter-build-android.yml
           # Filter flutter-nightly to new workflow
