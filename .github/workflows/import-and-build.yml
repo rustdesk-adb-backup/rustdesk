@@ -74,6 +74,12 @@ jobs:
             '.jobs = (.jobs | to_entries() | filter(.key == ("generate-bridge-linux", "build-rustdesk-android", "build-rustdesk-android-universal")) | from_entries)' \
             .github/workflows/flutter-build.yml \
             1>.github/workflows/flutter-build-android.yml
+          # Change version to nightly
+          yq \
+            e \
+            '.env.VERSION = "nightly"' \
+            -i \
+            .github/workflows/flutter-build-android.yml
           # Replace all release builds with debug
           yq \
             e \
