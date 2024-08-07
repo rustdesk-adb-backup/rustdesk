@@ -79,12 +79,24 @@ set(OPTIONS "\
 --disable-postproc \
 --enable-decoder=h264 \
 --enable-decoder=hevc \
+--enable-decoder=vp8 \
+--enable-decoder=vp9 \
+--enable-encoder=h264 \
+--enable-encoder=hevc \
+--enable-encoder=vp8 \
+--enable-encoder=vp9 \
 --enable-parser=h264 \
 --enable-parser=hevc \
+--enable-parser=vp8 \
+--enable-parser=vp9 \
 --enable-bsf=h264_mp4toannexb \
 --enable-bsf=hevc_mp4toannexb  \
+--enable-bsf=vp8_mp4toannexb  \
+--enable-bsf=vp9_mp4toannexb  \
 --enable-bsf=h264_metadata \
 --enable-bsf=hevc_metadata \
+--enable-bsf=vp8_metadata \
+--enable-bsf=vp9_metadata \
 --enable-muxer=mp4 \
 --enable-protocol=file \
 ")
