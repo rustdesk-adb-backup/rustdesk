@@ -532,6 +532,14 @@ impl HwCodecConfig {
                     name_prefix: "hevc",
                     data_format: DataFormat::H265,
                 },
+                T {
+                    name_prefix: "vp8",
+                    data_format: DataFormat::VP8,
+                },
+                T {
+                    name_prefix: "vp9",
+                    data_format: DataFormat::VP9,
+                },
             ];
             let mut e = vec![];
             if let Some(info) = info {
