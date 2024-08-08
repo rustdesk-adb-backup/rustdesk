@@ -10,7 +10,8 @@ object FFI {
         System.loadLibrary("rustdesk")
     }
 
-    external fun init(ctx: Context)
+    external fun initCtx(ctx: Context): Int
+    external fun initAv(): Int
     external fun startServer(app_dir: String, custom_client_config: String)
     external fun startService()
     external fun onVideoFrameUpdate(buf: ByteBuffer)

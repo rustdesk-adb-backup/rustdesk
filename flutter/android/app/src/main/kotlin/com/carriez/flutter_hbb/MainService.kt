@@ -231,7 +231,14 @@ class MainService : Service() {
     override fun onCreate() {
         super.onCreate()
         Log.d(logTag,"MainService onCreate, sdk int:${Build.VERSION.SDK_INT} reuseVirtualDisplay:$reuseVirtualDisplay")
-        FFI.init(this)
+        var ret = FFIInitSingleton.INSTANCE.initCtx(this)
+        if (ret != 0) {
+            Log.e(logTag, "FFIInitSingleton.INSTANCE.initCtx() failed : $ret")
+        }
+        ret = FFIInitSingleton.INSTANCE.initAv()
+        if (ret != 0) {
+            Log.e(logTag, "FFIInitSingleton.INSTANCE.initAv() failed : $ret")
+        }
         HandlerThread("Service", Process.THREAD_PRIORITY_BACKGROUND).apply {
             start()
             serviceLooper = looper

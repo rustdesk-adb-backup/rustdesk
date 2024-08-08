@@ -21,6 +21,7 @@ lazy_static! {
     static ref VIDEO_RAW: Mutex<FrameRaw> = Mutex::new(FrameRaw::new("video", MAX_VIDEO_FRAME_TIMEOUT));
     static ref AUDIO_RAW: Mutex<FrameRaw> = Mutex::new(FrameRaw::new("audio", MAX_AUDIO_FRAME_TIMEOUT));
     static ref NDK_CONTEXT_INITED: Mutex<bool> = Default::default();
+    static ref AV_CONTEXT_INITED: Mutex<bool> = Default::default();
     static ref MEDIA_CODEC_INFOS: RwLock<Option<MediaCodecInfos>> = RwLock::new(None);
 }
 
@@ -152,15 +153,29 @@ pub extern "system" fn Java_ffi_FFI_setFrameRawEnable(
 }
 
 #[no_mangle]
-pub extern "system" fn Java_ffi_FFI_init(env: JNIEnv, _class: JClass, ctx: JObject) {
-    log::debug!("MainService init from java");
+pub extern "system" fn Java_ffi_FFI_initCtx(env: JNIEnv, _class: JClass, ctx: JObject) -> i32 {
+    log::debug!("Init FFI from java");
     if let Ok(jvm) = env.get_java_vm() {
         *JVM.write().unwrap() = Some(jvm);
-        if let Ok(context) = env.new_global_ref(ctx) {
-            *MAIN_SERVICE_CTX.write().unwrap() = Some(context);
-            init_ndk_context().ok();
-        }
+    } else {
+        return -2;
     }
+    if let Ok(context) = env.new_global_ref(ctx) {
+        *MAIN_SERVICE_CTX.write().unwrap() = Some(context);
+        return init_ndk_context();
+    }
+    return -3;
+}
+
+#[no_mangle]
+pub extern "system" fn Java_ffi_FFI_initAv(env: JNIEnv, _class: JClass) -> i32 {
+    log::debug!("Init AV from java");
+    if let Ok(jvm) = env.get_java_vm() {
+        *JVM.write().unwrap() = Some(jvm);
+    } else {
+        return -2;
+    }
+    return init_av_context();
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -332,7 +347,7 @@ pub fn call_main_service_set_by_name(
     }
 }
 
-fn init_ndk_context() -> JniResult<()> {
+fn init_ndk_context() -> i32 {
     let mut lock = NDK_CONTEXT_INITED.lock().unwrap();
     if *lock {
         unsafe {
@@ -349,13 +364,34 @@ fn init_ndk_context() -> JniResult<()> {
                 jvm.get_java_vm_pointer() as _,
                 ctx.as_obj().as_raw() as _,
             );
-            #[cfg(feature = "hwcodec")]
-            hwcodec::android::ffmpeg_set_java_vm(
-                jvm.get_java_vm_pointer() as _,
-            );
         }
         *lock = true;
-        return Ok(());
+        return 0;
     }
-    Err(JniError::ThrowFailed(-1))
+    return -2;
+}
+
+
+#[cfg(not(feature = "hwcodec"))]
+fn init_av_context() -> i32 {
+    return 0;
+}
+
+#[cfg(feature = "hwcodec")]
+fn init_av_context() -> i32 {
+    let mut lock = AV_CONTEXT_INITED.lock().unwrap();
+    if *lock {
+        log::debug!("AV Context already defined!");
+        return -4;
+    }
+    if let Some(jvm) = JVM.read().unwrap().as_ref() {
+        let ret = hwcodec::android::ffmpeg_set_java_vm(
+            jvm.get_java_vm_pointer() as _,
+        );
+        if ret == 0 {
+          *lock = true;
+        }
+        return ret;
+    }
+    return -5;
 }
