@@ -65,7 +65,7 @@ use crate::{
     check_port,
     common::input::{MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT, MOUSE_TYPE_DOWN, MOUSE_TYPE_UP},
     create_symmetric_key_msg, decode_id_pk, get_rs_pk, is_keyboard_mode_supported, secure_tcp,
-    ui_interface::{get_buildin_option, use_texture_render},
+    ui_interface::{get_builtin_option, use_texture_render},
     ui_session_interface::{InvokeUiSession, Session},
 };
 
@@ -112,6 +112,9 @@ pub const SCRAP_OTHER_VERSION_OR_X11_REQUIRED: &str =
     "Wayland requires higher version of linux distro. Please try X11 desktop or change your OS.";
 pub const SCRAP_X11_REQUIRED: &str = "x11 expected";
 pub const SCRAP_X11_REF_URL: &str = "https://rustdesk.com/docs/en/manual/linux/#x11-required";
+
+#[cfg(not(any(target_os = "android", target_os = "linux")))]
+pub const AUDIO_BUFFER_MS: usize = 150;
 
 #[cfg(feature = "flutter")]
 #[cfg(not(any(target_os = "android", target_os = "ios")))]
@@ -903,8 +906,30 @@ struct AudioBuffer(pub Arc<std::sync::Mutex<ringbuf::HeapRb<f32>>>);
 impl Default for AudioBuffer {
     fn default() -> Self {
         Self(Arc::new(std::sync::Mutex::new(
-            ringbuf::HeapRb::<f32>::new(48000 * 2), // 48000hz, 2 channel, 1 second
+            ringbuf::HeapRb::<f32>::new(48000 * 2 * AUDIO_BUFFER_MS / 1000), // 48000hz, 2 channel
         )))
+    }
+}
+
+#[cfg(not(any(target_os = "android", target_os = "linux")))]
+impl AudioBuffer {
+    pub fn resize(&self, sample_rate: usize, channels: usize) {
+        let capacity = sample_rate * channels * AUDIO_BUFFER_MS / 1000;
+        let old_capacity = self.0.lock().unwrap().capacity();
+        if capacity != old_capacity {
+            *self.0.lock().unwrap() = ringbuf::HeapRb::<f32>::new(capacity);
+            log::info!("Audio buffer resized from {old_capacity} to {capacity}");
+        }
+    }
+
+    // clear when full to avoid long time noise
+    #[inline]
+    pub fn clear_if_full(&self) {
+        let full = self.0.lock().unwrap().is_full();
+        if full {
+            self.0.lock().unwrap().clear();
+            log::trace!("Audio buffer cleared");
+        }
     }
 }
 
@@ -1052,6 +1077,7 @@ impl AudioHandler {
                             self.device_channel,
                         );
                     }
+                    self.audio_buffer.clear_if_full();
                     audio_buffer.lock().unwrap().push_slice_overwrite(&buffer);
                 }
                 #[cfg(target_os = "android")]
@@ -1080,6 +1106,8 @@ impl AudioHandler {
             // too many errors, will improve later
             log::trace!("an error occurred on stream: {}", err);
         };
+        self.audio_buffer
+            .resize(config.sample_rate.0 as _, config.channels as _);
         let audio_buffer = self.audio_buffer.0.clone();
         let ready = self.ready.clone();
         let timeout = None;
@@ -2109,7 +2137,7 @@ impl LoginConfigHandler {
         } else {
             (my_id, self.id.clone())
         };
-        let mut display_name = get_buildin_option(config::keys::OPTION_DISPLAY_NAME);
+        let mut display_name = get_builtin_option(config::keys::OPTION_DISPLAY_NAME);
         if display_name.is_empty() {
             display_name =
                 serde_json::from_str::<serde_json::Value>(&LocalConfig::get_option("user_info"))
@@ -2892,7 +2920,7 @@ pub async fn handle_hash(
 
     if password.is_empty() {
         let p =
-            crate::ui_interface::get_buildin_option(config::keys::OPTION_DEFAULT_CONNECT_PASSWORD);
+            crate::ui_interface::get_builtin_option(config::keys::OPTION_DEFAULT_CONNECT_PASSWORD);
         if !p.is_empty() {
             let mut hasher = Sha256::new();
             hasher.update(p.clone());
