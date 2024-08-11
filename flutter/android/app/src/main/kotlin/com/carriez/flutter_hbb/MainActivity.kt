@@ -301,7 +301,7 @@ class MainActivity : FlutterActivity() {
             codecObject.put("hw", hw)
             var mime_type = ""
             codec.supportedTypes.forEach { type ->
-                if (listOf("video/avc", "video/hevc").contains(type)) { // "video/x-vnd.on2.vp8", "video/x-vnd.on2.vp9", "video/av01"
+                if (listOf("video/avc", "video/hevc", "video/x-vnd.on2.vp8", "video/x-vnd.on2.vp9", "video/av01").contains(type)) {
                     mime_type = type;
                 }
             }
@@ -330,10 +330,9 @@ class MainActivity : FlutterActivity() {
                 if (!codec.isEncoder) {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                         codecObject.put("low_latency", caps.isFeatureSupported(MediaCodecInfo.CodecCapabilities.FEATURE_LowLatency))
+                    } else {
+                        codecObject.put("low_latency", true)
                     }
-                }
-                if (!codec.isEncoder) {
-                    return@forEach
                 }
                 codecArray.put(codecObject)
             }

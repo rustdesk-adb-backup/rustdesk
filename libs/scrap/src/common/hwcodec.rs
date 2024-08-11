@@ -233,6 +233,21 @@ impl HwRamEncoder {
                     info = Some(v);
                 }
             }
+            CodecFormat::VP8 => {
+                if let Some(v) = best.vp8 {
+                    info = Some(v);
+                }
+            }
+            CodecFormat::VP9 => {
+               if let Some(v) = best.vp9 {
+                    info = Some(v);
+               }
+            }
+            CodecFormat::AV1 => {
+               if let Some(v) = best.av1 {
+                    info = Some(v);
+               }
+            }
             _ => {}
         }
         info
@@ -334,6 +349,21 @@ impl HwRamDecoder {
                         info = Some(v);
                     }
                 }
+                CodecFormat::VP8 => {
+                    if let Some(v) = best.vp8 {
+                        info = Some(v);
+                    }
+                }
+                CodecFormat::VP9 => {
+                    if let Some(v) = best.vp9 {
+                        info = Some(v);
+                    }
+                }
+                CodecFormat::AV1 => {
+                    if let Some(v) = best.av1 {
+                        info = Some(v);
+                    }
+                }
                 _ => {}
             }
         }
@@ -342,10 +372,10 @@ impl HwRamDecoder {
 
     pub fn new(format: CodecFormat) -> ResultType<Self> {
         let info = HwRamDecoder::try_get(format);
-        log::info!("try create {info:?} ram decoder");
         let Some(info) = info else {
             bail!("unsupported format: {:?}", format);
         };
+        log::info!("try create {info:?} ram decoder");
         let ctx = DecodeContext {
             name: info.name.clone(),
             device_type: info.hwdevice.clone(),
@@ -383,6 +413,21 @@ impl HwRamDecoderImage<'_> {
         let bytes_per_row = (rgb.w * 4 + dst_align - 1) & !(dst_align - 1);
         rgb.raw.resize(rgb.h * bytes_per_row, 0);
         match frame.pixfmt {
+            AVPixelFormat::AV_PIX_FMT_RGBA => {
+                let f = match rgb.fmt() {
+                    ImageFormat::ARGB => RGBAToARGB,
+                    //ImageFormat::ABGR => RGBAToABGR,
+                    _ => bail!("unsupported format: {:?} -> {:?}", frame.pixfmt, rgb.fmt()),
+                };
+                call_yuv!(f(
+                    frame.data[0].as_ptr(),
+                    frame.linesize[0],
+                    rgb.raw.as_mut_ptr(),
+                    bytes_per_row as _,
+                    width,
+                    -height,
+                ));
+            }
             AVPixelFormat::AV_PIX_FMT_NV12 => {
                 // I420ToARGB is much faster than NV12ToARGB in tests on Windows
                 if cfg!(windows) {
@@ -532,7 +577,20 @@ impl HwCodecConfig {
                     name_prefix: "hevc",
                     data_format: DataFormat::H265,
                 },
+                T {
+                    name_prefix: "vp8",
+                    data_format: DataFormat::VP8,
+                },
+                T {
+                    name_prefix: "vp9",
+                    data_format: DataFormat::VP9,
+                },
+                T {
+                    name_prefix: "av1",
+                    data_format: DataFormat::AV1,
+                },
             ];
+            let mut d = vec![];
             let mut e = vec![];
             if let Some(info) = info {
                 ts.iter().for_each(|t| {
@@ -540,42 +598,68 @@ impl HwCodecConfig {
                         .codecs
                         .iter()
                         .filter(|c| {
-                            c.is_encoder
-                                && c.mime_type.as_str() == get_mime_type(t.data_format)
+                                c.mime_type.as_str() == get_mime_type(t.data_format)
                                 && c.nv12
                                 && c.hw == Some(true) //only use hardware codec
                         })
                         .collect();
                     let screen_wh = std::cmp::max(info.w, info.h);
-                    let mut best = None;
-                    if let Some(codec) = codecs
+                    let mut enc_best = None;
+                    let mut dec_best = None;
+                    if let Some(enc_codec) = codecs
                         .iter()
-                        .find(|c| c.max_width >= screen_wh && c.max_height >= screen_wh)
+                        .find(|c| c.is_encoder && c.max_width >= screen_wh && c.max_height >= screen_wh)
                     {
-                        best = Some(codec.name.clone());
+                        enc_best = Some(enc_codec.name.clone());
                     } else {
                         // find the max resolution
-                        let mut max_area = 0;
+                        let mut enc_max_area = 0;
                         for codec in codecs.iter() {
-                            if codec.max_width * codec.max_height > max_area {
-                                best = Some(codec.name.clone());
-                                max_area = codec.max_width * codec.max_height;
+                            if codec.is_encoder && (codec.max_width * codec.max_height > enc_max_area) {
+                                enc_best = Some(codec.name.clone());
+                                enc_max_area = codec.max_width * codec.max_height;
                             }
                         }
                     }
-                    if let Some(best) = best {
+                    if let Some(dec_codec) = codecs
+                        .iter()
+                        .find(|c| !c.is_encoder && c.low_latency && c.max_width >= screen_wh && c.max_height >= screen_wh)
+                    {
+                        dec_best = Some(dec_codec.name.clone());
+                    } else {
+                        // find the max resolution
+                        let mut dec_max_area = 0;
+                        for codec in codecs.iter() {
+                            if !codec.is_encoder && codec.low_latency && (codec.max_width * codec.max_height > dec_max_area) {
+                                dec_best = Some(codec.name.clone());
+                                dec_max_area = codec.max_width * codec.max_height;
+                            }
+                        }
+                    }
+                    if let Some(enc_best) = enc_best {
                         e.push(CodecInfo {
                             name: format!("{}_mediacodec", t.name_prefix),
-                            mc_name: Some(best),
+                            mc_name: Some(enc_best),
                             format: t.data_format,
-                            hwdevice: hwcodec::ffmpeg::AVHWDeviceType::AV_HWDEVICE_TYPE_NONE,
+                            hwdevice: hwcodec::ffmpeg::AVHWDeviceType::AV_HWDEVICE_TYPE_MEDIACODEC,
+                            priority: 0,
+                        });
+                    }
+                    if let Some(dec_best) = dec_best {
+                        d.push(CodecInfo {
+                            name: format!("{}_mediacodec", t.name_prefix),
+                            mc_name: Some(dec_best),
+                            format: t.data_format,
+                            hwdevice: hwcodec::ffmpeg::AVHWDeviceType::AV_HWDEVICE_TYPE_MEDIACODEC,
                             priority: 0,
                         });
                     }
                 });
             }
             log::debug!("e: {e:?}");
+            log::debug!("d: {d:?}");
             HwCodecConfig {
+                ram_decode: d,
                 ram_encode: e,
                 ..Default::default()
             }

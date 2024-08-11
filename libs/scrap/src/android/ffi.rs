@@ -188,7 +188,7 @@ pub struct MediaCodecInfo {
     pub surface: bool,
     pub nv12: bool,
     #[serde(default)]
-    pub low_latency: Option<bool>, // api 30+, decoder
+    pub low_latency: bool, // api 30+, decoder
     pub min_bitrate: u32,
     pub max_bitrate: u32,
     pub min_width: usize,

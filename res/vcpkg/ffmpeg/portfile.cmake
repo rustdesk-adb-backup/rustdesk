@@ -181,11 +181,17 @@ elseif(VCPKG_CMAKE_SYSTEM_NAME STREQUAL "Android")
 --disable-asm \
 --enable-jni \
 --enable-mediacodec \
---disable-hwaccels \
---enable-encoder=h264_mediacodec \
---enable-encoder=hevc_mediacodec \
+--enable-bsf=extract_extradata \
+--enable-decoder=vp8_mediacodec \
+--enable-decoder=vp9_mediacodec \
+--enable-decoder=av1_mediacodec \
 --enable-decoder=h264_mediacodec \
 --enable-decoder=hevc_mediacodec \
+--enable-encoder=vp8_mediacodec \
+--enable-encoder=vp9_mediacodec \
+--enable-encoder=av1_mediacodec \
+--enable-encoder=h264_mediacodec \
+--enable-encoder=hevc_mediacodec \
 ")
 endif()
 

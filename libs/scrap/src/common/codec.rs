@@ -101,6 +101,12 @@ pub struct Decoder {
     vp9: Option<VpxDecoder>,
     av1: Option<AomDecoder>,
     #[cfg(feature = "hwcodec")]
+    vp8_ram: Option<HwRamDecoder>,
+    #[cfg(feature = "hwcodec")]
+    vp9_ram: Option<HwRamDecoder>,
+    #[cfg(feature = "hwcodec")]
+    av1_ram: Option<HwRamDecoder>,
+    #[cfg(feature = "hwcodec")]
     h264_ram: Option<HwRamDecoder>,
     #[cfg(feature = "hwcodec")]
     h265_ram: Option<HwRamDecoder>,
@@ -494,6 +500,8 @@ impl Decoder {
         let (mut vp8, mut vp9, mut av1) = (None, None, None);
         #[cfg(feature = "hwcodec")]
         let (mut h264_ram, mut h265_ram) = (None, None);
+        #[cfg(feature = "hwcodec")]
+        let (mut vp8_ram, mut vp9_ram, mut av1_ram) = (None, None, None);
         #[cfg(feature = "vram")]
         let (mut h264_vram, mut h265_vram) = (None, None);
         #[cfg(feature = "mediacodec")]
@@ -502,29 +510,62 @@ impl Decoder {
 
         match format {
             CodecFormat::VP8 => {
-                match VpxDecoder::new(VpxDecoderConfig {
-                    codec: VpxVideoCodecId::VP8,
-                }) {
-                    Ok(v) => vp8 = Some(v),
-                    Err(e) => log::error!("create VP8 decoder failed: {}", e),
+                #[cfg(feature = "hwcodec")]
+                #[cfg(target_os = "android")]
+                if !valid {
+                    match HwRamDecoder::new(format) {
+                        Ok(v) => vp8_ram = Some(v),
+                        Err(e) => log::error!("create VP8 ram decoder failed: {}", e),
+                    }
+                    valid = vp8_ram.is_some();
                 }
-                valid = vp8.is_some();
+                if !valid {
+                    match VpxDecoder::new(VpxDecoderConfig {
+                        codec: VpxVideoCodecId::VP8,
+                    }) {
+                        Ok(v) => vp8 = Some(v),
+                        Err(e) => log::error!("create VP8 decoder failed: {}", e),
+                    }
+                    valid = vp8.is_some();
+                }
             }
             CodecFormat::VP9 => {
-                match VpxDecoder::new(VpxDecoderConfig {
-                    codec: VpxVideoCodecId::VP9,
-                }) {
-                    Ok(v) => vp9 = Some(v),
-                    Err(e) => log::error!("create VP9 decoder failed: {}", e),
+                #[cfg(feature = "hwcodec")]
+                #[cfg(target_os = "android")]
+                if !valid {
+                    match HwRamDecoder::new(format) {
+                        Ok(v) => vp9_ram = Some(v),
+                        Err(e) => log::error!("create VP9 ram decoder failed: {}", e),
+                    }
+                    valid = vp9_ram.is_some();
                 }
-                valid = vp9.is_some();
+                if !valid {
+                    match VpxDecoder::new(VpxDecoderConfig {
+                        codec: VpxVideoCodecId::VP9,
+                    }) {
+                        Ok(v) => vp9 = Some(v),
+                        Err(e) => log::error!("create VP9 decoder failed: {}", e),
+                    }
+                    valid = vp9.is_some();
+                }
             }
             CodecFormat::AV1 => {
-                match AomDecoder::new() {
-                    Ok(v) => av1 = Some(v),
-                    Err(e) => log::error!("create AV1 decoder failed: {}", e),
+                #[cfg(feature = "hwcodec")]
+                #[cfg(target_os = "android")]
+                if !valid {
+                    match HwRamDecoder::new(format) {
+                        Ok(v) => av1_ram = Some(v),
+                        Err(e) => log::error!("create AV1 ram decoder failed: {}", e),
+                    }
+                    valid = av1_ram.is_some();
                 }
-                valid = av1.is_some();
+                if !valid {
+                    match AomDecoder::new() {
+                        Ok(v) => av1 = Some(v),
+                        Err(e) => log::error!("create AV1 decoder failed: {}", e),
+                    }
+                    valid = av1.is_some();
+                }
             }
             CodecFormat::H264 => {
                 #[cfg(feature = "vram")]
@@ -592,6 +633,12 @@ impl Decoder {
             vp9,
             av1,
             #[cfg(feature = "hwcodec")]
+            vp8_ram,
+            #[cfg(feature = "hwcodec")]
+            vp9_ram,
+            #[cfg(feature = "hwcodec")]
+            av1_ram,
+            #[cfg(feature = "hwcodec")]
             h264_ram,
             #[cfg(feature = "hwcodec")]
             h265_ram,
@@ -629,6 +676,11 @@ impl Decoder {
     ) -> ResultType<bool> {
         match frame {
             video_frame::Union::Vp8s(vp8s) => {
+                #[cfg(feature = "hwcodec")]
+                if let Some(decoder) = &mut self.vp8_ram {
+                    *chroma = Some(Chroma::I420);
+                    return Decoder::handle_hwram_video_frame(decoder, vp8s, rgb, &mut self.i420);
+                }
                 if let Some(vp8) = &mut self.vp8 {
                     Decoder::handle_vpxs_video_frame(vp8, vp8s, rgb, chroma)
                 } else {
@@ -636,6 +688,11 @@ impl Decoder {
                 }
             }
             video_frame::Union::Vp9s(vp9s) => {
+                #[cfg(feature = "hwcodec")]
+                if let Some(decoder) = &mut self.vp9_ram {
+                   *chroma = Some(Chroma::I420);
+                    return Decoder::handle_hwram_video_frame(decoder, vp9s, rgb, &mut self.i420);
+                }
                 if let Some(vp9) = &mut self.vp9 {
                     Decoder::handle_vpxs_video_frame(vp9, vp9s, rgb, chroma)
                 } else {
@@ -643,6 +700,11 @@ impl Decoder {
                 }
             }
             video_frame::Union::Av1s(av1s) => {
+                #[cfg(feature = "hwcodec")]
+                if let Some(decoder) = &mut self.av1_ram {
+                    *chroma = Some(Chroma::I420);
+                    return Decoder::handle_hwram_video_frame(decoder, av1s, rgb, &mut self.i420);
+                }
                 if let Some(av1) = &mut self.av1 {
                     Decoder::handle_av1s_video_frame(av1, av1s, rgb, chroma)
                 } else {
