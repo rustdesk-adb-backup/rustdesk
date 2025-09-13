@@ -1,0 +1,25 @@
+name: Monthly rearm
+
+on:
+  schedule:
+    - cron: "0 0 1 * *"
+  workflow_dispatch:
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Clone repository
+        run: git clone "https://oauth2:${{ secrets.GITHUB_TOKEN }}@github.com/$GITHUB_REPOSITORY" -b "$GITHUB_REF_NAME" "$GITHUB_WORKSPACE" && cd "$GITHUB_WORKSPACE"
+
+      - name: Rearm
+        run: |
+          GIT_COMMITTER_NAME="$(git log -1 --format='format:%an')"
+          GIT_COMMITTER_EMAIL="$(git log -1 --format='format:%ae')"
+
+          export GIT_COMMITTER_NAME GIT_COMMITTER_EMAIL
+
+          GIT_EDITOR="cat" git commit --amend
+          git push -f origin
