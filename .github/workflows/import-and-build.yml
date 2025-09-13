@@ -71,7 +71,7 @@ jobs:
           # Filter flutter-build.yml to have only Android builds
           yq \
             e \
-            '.jobs = (.jobs | to_entries() | filter(.key == ("generate-bridge-linux", "build-rustdesk-android", "build-rustdesk-android-universal")) | from_entries)' \
+            '.jobs = (.jobs | to_entries() | filter(.key == ("generate-bridge", "build-rustdesk-android", "build-rustdesk-android-universal")) | from_entries)' \
             .github/workflows/flutter-build.yml \
             1>.github/workflows/flutter-build-android.yml
           # Change version to nightly
