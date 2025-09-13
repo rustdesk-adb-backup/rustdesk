@@ -30,31 +30,12 @@ jobs:
             -b "${{ env.RD_BRANCH }}" \
             "${{ github.workspace }}"
 
-      - name: Set deploy key, user name and email
+      - name: Set user name and email
         if: ${{ github.event.inputs.rebuild-only == 'false' }}
-        env:
-          DEPLOYKEY: ${{ secrets.DEPLOYKEY }}
         run: |
           git config user.name "rustdesk-adb-backup"
           git config user.email "rustdesk-adb-backup@noreply.users.github.com"
           #
-          mkdir -p "${HOME}/.ssh"
-          #
-          cat >"${HOME}/.ssh/deploy-key" <<.a
-          $DEPLOYKEY
-          .a
-          #
-          cat >"${HOME}/.ssh/config" <<.b
-            Host github.com
-              HostName github.com
-              IdentityFile ~/.ssh/deploy-key
-          .b
-          #
-          chmod 0600 "${HOME}/.ssh/config"
-          chmod 0600 "${HOME}/.ssh/deploy-key"
-          #
-          REPO_SSH="$(git remote get-url origin | sed 's|https://github.com/|git@github.com:|')"
-          git remote set-url origin --push "${REPO_SSH}"
           UPSTREAM_REPO="$(curl -s "https://api.github.com/repos/${{ github.repository }}" | jq -r '.parent.full_name')"
           git remote add upstream "https://github.com/${UPSTREAM_REPO}"
           git remote -vv
