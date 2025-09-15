@@ -31,7 +31,7 @@ jobs:
             "${{ github.workspace }}"
 
       - name: Set user name and email
-        if: ${{ github.event.inputs.rebuild-only == 'false' }}
+        if: ${{ github.event.inputs.rebuild-only == 'false' || github.action.schedule }}
         run: |
           git config user.name "rustdesk-adb-backup"
           git config user.email "rustdesk-adb-backup@noreply.users.github.com"
@@ -41,13 +41,13 @@ jobs:
           git remote -vv
 
       - name: Import upstream changes
-        if: ${{ github.event.inputs.rebuild-only == 'false' }}
+        if: ${{ github.event.inputs.rebuild-only == 'false' || github.action.schedule }}
         run: |
           git fetch upstream refs/heads/master
           git merge --ff FETCH_HEAD
 
       - name: Generate workflow definitions
-        if: ${{ github.event.inputs.rebuild-only == 'false' }}
+        if: ${{ github.event.inputs.rebuild-only == 'false' || github.action.schedule }}
         run: |
           # Filter flutter-build.yml to have only Android builds
           yq \
