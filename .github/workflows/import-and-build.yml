@@ -118,10 +118,15 @@ jobs:
           git add \
             .github/workflows/flutter-build-android.yml \
             .github/workflows/flutter-nightly-android.yml
-          if [ -n "$(git diff --cached "origin/${{ env.RD_BRANCH }}")" ]; then
+          NEED_REBUILD=false
+          if [ -n "$(git diff --cached)" ]; then
             git commit -m "Filter flutter-build.yml to have only Android debug builds"
-            echo "NEED_REBUILD=true" >> "$GITHUB_ENV"
+            NEED_REBUILD=true
           fi
+          if [ -n "$(git diff "origin/${{ env.RD_BRANCH }}")" ]; then
+            NEED_REBUILD=true
+          fi
+          echo "NEED_REBUILD=${NEED_REBUILD}" >> "$GITHUB_ENV"
 
       - name: Push changes to rustdesk branch
         if: ${{ env.NEED_REBUILD == 'true' && github.event.inputs.rebuild-only == 'false' }}
