@@ -31,7 +31,7 @@ jobs:
             "${{ github.workspace }}"
 
       - name: Set user name and email
-        if: ${{ github.event.inputs.rebuild-only == 'false' || github.event_name == 'schedule' }}
+        if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.rebuild-only == 'false') }}
         run: |
           git config user.name "rustdesk-adb-backup"
           git config user.email "rustdesk-adb-backup@noreply.users.github.com"
@@ -41,13 +41,13 @@ jobs:
           git remote -vv
 
       - name: Import upstream changes
-        if: ${{ github.event.inputs.rebuild-only == 'false' || github.event_name == 'schedule' }}
+        if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.rebuild-only == 'false') }}
         run: |
           git fetch upstream refs/heads/master
           git merge --ff FETCH_HEAD
 
       - name: Generate workflow definitions
-        if: ${{ github.event.inputs.rebuild-only == 'false' || github.event_name == 'schedule' }}
+        if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.rebuild-only == 'false') }}
         run: |
           # Filter flutter-build.yml to have only Android builds
           yq \
@@ -118,23 +118,23 @@ jobs:
           git add \
             .github/workflows/flutter-build-android.yml \
             .github/workflows/flutter-nightly-android.yml
-          NEED_REBUILD=false
+          NEED_PUSH=false
           if [ -n "$(git diff --cached)" ]; then
             git commit -m "Filter flutter-build.yml to have only Android debug builds"
-            NEED_REBUILD=true
+            NEED_PUSH=true
           fi
           if [ -n "$(git diff "origin/${{ env.RD_BRANCH }}")" ]; then
-            NEED_REBUILD=true
+            NEED_PUSH=true
           fi
-          echo "NEED_REBUILD=${NEED_REBUILD}" >> "$GITHUB_ENV"
+          echo "NEED_PUSH=${NEED_PUSH}" >> "$GITHUB_ENV"
 
       - name: Push changes to rustdesk branch
-        if: ${{ env.NEED_REBUILD == 'true' && github.event.inputs.rebuild-only == 'false' }}
+        if: ${{ env.NEED_PUSH == 'true' || (github.event_name == 'workflow_dispatch' && github.event.inputs.rebuild-only == 'false') }}
         run: |
           git push
 
       - name: Start build
-        if: ${{ env.NEED_REBUILD == 'true' || github.event.inputs.rebuild-only == 'true' }}
+        if: ${{ env.NEED_PUSH == 'true' || (github.event_name == 'workflow_dispatch' && github.event.inputs.rebuild-only == 'true') }}
         run: |
           gh workflow run \
             flutter-nightly-android.yml \
