@@ -10,9 +10,11 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - name: Clone repository
-        run: git clone "https://oauth2:${{ secrets.GITHUB_TOKEN }}@github.com/$GITHUB_REPOSITORY" -b "$GITHUB_REF_NAME" "$GITHUB_WORKSPACE" && cd "$GITHUB_WORKSPACE"
+        run: git clone "https://github.com/$GITHUB_REPOSITORY" -b "$GITHUB_REF_NAME" "$GITHUB_WORKSPACE" && cd "$GITHUB_WORKSPACE"
 
       - name: Rearm
         run: |
