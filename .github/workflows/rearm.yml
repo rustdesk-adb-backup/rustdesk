@@ -18,6 +18,7 @@ jobs:
 
       - name: Rearm
         run: |
+          gh auth setup-git
           GIT_COMMITTER_NAME="$(git log -1 --format='format:%an')"
           GIT_COMMITTER_EMAIL="$(git log -1 --format='format:%ae')"
 
