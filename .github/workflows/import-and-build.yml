@@ -20,6 +20,7 @@ jobs:
     permissions:
       actions: write
       contents: write
+      workflows: write
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
