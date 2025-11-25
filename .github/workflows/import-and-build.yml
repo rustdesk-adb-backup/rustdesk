@@ -130,6 +130,10 @@ jobs:
             '.jobs.run-flutter-nightly-build.permissions.contents = "write"' \
             -i \
             .github/workflows/flutter-nightly-android.yml
+          # TEMP: fix x86 build of OpenSSL
+          sed -i \
+            's|\./flutter/ndk_x86.sh|CFLAGS="-DCLANG_BROKEN_ATOMICS" CXXFLAGS="-DCLANG_BROKEN_ATOMICS" &|' \
+            .github/workflows/flutter-build-android.yml
           # Add and commit new changes
           git add \
             .github/workflows/flutter-build-android.yml \
