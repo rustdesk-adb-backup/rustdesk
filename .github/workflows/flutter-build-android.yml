@@ -149,6 +149,7 @@ jobs:
               ANDROID_TARGET=x86
             ;;
           esac
+          sed -i "/VCPKG_CMAKE_SYSTEM_VERSION /s/28/21/" "${VCPKG_ROOT}/triplets/arm64-android.cmake" "${VCPKG_ROOT}/triplets/arm-neon-android.cmake" "${VCPKG_ROOT}/triplets/community/x86-android.cmake" "${VCPKG_ROOT}/triplets/x64-android.cmake"
           if ! ./flutter/build_android_deps.sh "${ANDROID_TARGET}"; then
             find "${VCPKG_ROOT}/" -name "*.log" | while read -r _1; do
               echo "$_1:"
