@@ -48,11 +48,11 @@ jobs:
       - name: Checkout source code
         run: |
           git clone \
-            "git@github.com:${{ github.repository }}" \
-            -b "${{ env.RD_BRANCH }}" \
-            "${{ github.workspace }}"
+            "git@github.com:${GITHUB_REF}" \
+            -b "${RD_BRANCH}" \
+            "${GITHUB_WORKSPACE}"
           #
-          UPSTREAM_REPO="$(curl -s "https://api.github.com/repos/${{ github.repository }}" | jq -r '.parent.full_name')"
+          UPSTREAM_REPO="$(curl -s "https://api.github.com/repos/${GITHUB_REPOSITORY}" | jq -r '.parent.full_name')"
           git remote add upstream "https://github.com/${UPSTREAM_REPO}"
           git remote -vv
 
@@ -144,7 +144,7 @@ jobs:
             git commit -m "Filter flutter-build.yml to have only Android debug builds"
             NEED_PUSH=true
           fi
-          if [ -n "$(git diff "origin/${{ env.RD_BRANCH }}")" ]; then
+          if [ -n "$(git diff "origin/${RD_BRANCH}")" ]; then
             NEED_PUSH=true
           fi
           echo "NEED_PUSH=${NEED_PUSH}" >> "$GITHUB_ENV"
@@ -159,5 +159,5 @@ jobs:
         run: |
           gh workflow run \
             flutter-nightly-android.yml \
-            -R "${{ github.repository }}" \
-            --ref "${{ env.RD_BRANCH }}"
+            -R "${GITHUB_REPOSITORY}" \
+            --ref "${RD_BRANCH}"
