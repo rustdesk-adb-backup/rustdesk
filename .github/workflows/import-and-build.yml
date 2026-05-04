@@ -124,12 +124,17 @@ jobs:
               '.on = (.on | to_entries() | filter(.key != ("schedule")) | from_entries)' \
               -i \
               .github/workflows/flutter-nightly-android.yml
-          # Add permission to m9dify releases and commits
+          # Add permission to modify releases and commits
           yq \
             e \
             '.jobs.run-flutter-nightly-build.permissions.contents = "write"' \
             -i \
             .github/workflows/flutter-nightly-android.yml
+          # TEMP: Fix Android vcpkg mismatch
+          sed \
+            -i \
+            -e '/build_android_deps/i\ \ \ \ \ \ \ \ \ \ sed -i "/VCPKG_CMAKE_SYSTEM_VERSION /s/28/21/" "${VCPKG_ROOT}/triplets/arm64-android.cmake" "${VCPKG_ROOT}/triplets/arm-neon-android.cmake" "${VCPKG_ROOT}/triplets/community/x86-android.cmake" "${VCPKG_ROOT}/triplets/x64-android.cmake"' \
+            .github/workflows/flutter-build-android.yml
           # Add and commit new changes
           git add \
             .github/workflows/flutter-build-android.yml \
