@@ -99,6 +99,7 @@ class DesktopTabController {
   /// index, key
   Function(int, String)? onRemoved;
   Function(String)? onSelected;
+  Future<void> Function()? onCloseWindow;
 
   DesktopTabController(
       {required this.tabType, this.onRemoved, this.onSelected});
@@ -417,6 +418,13 @@ class _DesktopTabState extends State<DesktopTab>
     }
   }
 
+  // On Linux, GTK destroys the window on a close request unless prevent-close
+  // is on. It is off for the cm and install windows, and onActiveWindowChanged()
+  // turns it off to quit, so the window can no longer be saved or hidden.
+  // https://github.com/rustdesk/rustdesk/issues/16512
+  Future<bool> _isLinuxWindowClosed() async =>
+      isLinux && isMainWindow && !await windowManager.isPreventClose();
+
   @override
   void onWindowMoved() {
     _saveFrame();
@@ -464,6 +472,8 @@ class _DesktopTabState extends State<DesktopTab>
       });
     }
 
+    if (await _isLinuxWindowClosed()) return;
+
     await _saveFrame(flush: true);
 
     // hide window on close
@@ -471,6 +481,7 @@ class _DesktopTabState extends State<DesktopTab>
       if (rustDeskWinManager.getActiveWindows().contains(kMainWindowId)) {
         await rustDeskWinManager.unregisterActiveWindow(kMainWindowId);
       }
+      if (await _isLinuxWindowClosed()) return;
       // macOS specific workaround, the window is not hiding when in fullscreen.
       if (isMacOS && await windowManager.isFullScreen()) {
         await windowManager.setFullScreen(false);
@@ -592,13 +603,13 @@ class _DesktopTabState extends State<DesktopTab>
   }
 
   Widget _buildBar() {
+    final isIncomingHomePage = bind.isIncomingOnly() && isInHomePage();
     return Row(
       children: [
         Expanded(
             child: GestureDetector(
                 // custom double tap handler
-                onTap: !(bind.isIncomingOnly() && isInHomePage()) &&
-                        showMaximize
+                onTap: !isIncomingHomePage && showMaximize
                     ? () {
                         final current = DateTime.now().millisecondsSinceEpoch;
                         final elapsed = current - _lastClickTime;
@@ -609,7 +620,7 @@ class _DesktopTabState extends State<DesktopTab>
                               .then((value) => stateGlobal.setMaximized(value));
                         }
                       }
-                    : null,
+                    : (isIncomingHomePage ? () {} : null), // Keep tap recognizer for Windows touch.
                 onPanStart: (_) => startDragging(isMainWindow),
                 onPanCancel: () {
                   // We want to disable dragging of the tab area in the tab bar.

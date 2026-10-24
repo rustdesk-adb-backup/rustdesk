@@ -141,7 +141,7 @@ class _ViewCameraPageState extends State<ViewCameraPage>
     // `on_voice_call_closed` should be called when the connection is ended.
     // The inner logic of `on_voice_call_closed` will check if the voice call is active.
     // Only one client is considered here for now.
-    gFFI.chatModel.onVoiceCallClosed("End connetion");
+    gFFI.chatModel.onVoiceCallClosed("End connection");
   }
 
   @override
@@ -259,11 +259,13 @@ class _ViewCameraPageState extends State<ViewCameraPage>
                         }
                         return Container(
                           color: MyTheme.canvasColor,
-                          child: RawTouchGestureDetectorRegion(
-                            child: getBodyForMobile(),
-                            ffi: gFFI,
-                            isCamera: true,
-                          ),
+                          child: inputModel.isPhysicalMouse.value
+                              ? getBodyForMobile()
+                              : RawTouchGestureDetectorRegion(
+                                  child: getBodyForMobile(),
+                                  ffi: gFFI,
+                                  isCamera: true,
+                                ),
                         );
                       }),
                     ),

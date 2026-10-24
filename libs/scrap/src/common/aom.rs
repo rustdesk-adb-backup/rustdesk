@@ -13,10 +13,9 @@ use crate::{EncodeInput, EncodeYuvFormat, Pixfmt};
 use hbb_common::{
     anyhow::{anyhow, Context},
     bytes::Bytes,
-    log,
-    message_proto::{Chroma, EncodedVideoFrame, EncodedVideoFrames, VideoFrame},
-    ResultType,
+    log, ResultType,
 };
+use base::message_proto::{Chroma, EncodedVideoFrame, EncodedVideoFrames, VideoFrame};
 use std::{ptr, slice};
 
 generate_call_macro!(call_aom, false);
@@ -77,6 +76,10 @@ mod webrtc {
         } else {
             10
         }
+    }
+
+    fn tile_log2(threads: u32) -> std::os::raw::c_uint {
+        (threads as f64).log2().ceil() as _
     }
 
     fn get_super_block_size(width: u32, height: u32, threads: u32) -> aom_superblock_size_t {
@@ -160,8 +163,7 @@ mod webrtc {
         } else {
             AV1E_SET_TILE_COLUMNS
         };
-        // Failed on android
-        call_ctl!(ctx, tile_set, (cfg.g_threads as f64 * 1.0f64).log2().ceil());
+        call_ctl!(ctx, tile_set, tile_log2(cfg.g_threads));
         call_ctl!(ctx, AV1E_SET_ROW_MT, 1);
         call_ctl!(ctx, AV1E_SET_ENABLE_OBMC, 0);
         call_ctl!(ctx, AV1E_SET_NOISE_SENSITIVITY, 0);
