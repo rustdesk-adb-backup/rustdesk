@@ -46,6 +46,7 @@ jobs:
           chmod 0600 "${HOME}/.ssh/deploy-key"
 
       - name: Checkout source code
+        if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.rebuild-only == 'false') }}
         run: |
           git clone \
             "git@github.com:${GITHUB_REPOSITORY}" \
