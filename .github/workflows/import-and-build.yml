@@ -48,7 +48,7 @@ jobs:
       - name: Checkout source code
         run: |
           git clone \
-            "git@github.com:${GITHUB_REF}" \
+            "git@github.com:${GITHUB_REPOSITORY}" \
             -b "${RD_BRANCH}" \
             "${GITHUB_WORKSPACE}"
           #
