@@ -813,7 +813,16 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("shortcut-key-not-supported", "Znak '{}' nie może być użyty jako skrót."),
         ("On", "Włączone"),
         ("Off", "Wyłączone"),
-        ("api_server_connection_tip", ""),
-        ("api_server_empty_tip", ""),
+        ("api_server_connection_tip", "Twój własny serwer używa nieszyfrowanego protokołu HTTP. Skontaktuj się z administratorem, aby włączyć HTTPS."),
+        ("api_server_empty_tip", "Gdy pole Serwer API jest puste, Twój własny serwer domyślnie używa HTTP. Skontaktuj się z administratorem, aby włączyć HTTPS."),
+        ("RustDesk storage", "Pamięć RustDesk"),
+        ("Other folders", "Inne foldery"),
+        ("Choose which folder remote devices can access.", "Wybierz folder, do którego zdalne urządzenia będą miały dostęp."),
+        ("android-logs-folder-tip", "Wybierz Android → media, aby przechowywać pliki dziennika."),
+        ("Choose folder", "Wybierz folder"),
+        ("Please select Android → media.", "Wybierz Android → media."),
+        ("Trust duration (days)", "Okres zaufania (dni)"),
+        ("Renew trust", "Odnów zaufanie"),
+        ("install-directory-not-empty-tip", "Wybrany folder nie jest pusty. Instalacja może usunąć istniejące dane. Rozważ wybranie innego folderu."),
     ].iter().cloned().collect();
 }
