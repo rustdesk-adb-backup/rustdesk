@@ -2,8 +2,8 @@ name: Pull RustDesk master branch and build Android
 
 on:
   schedule:
-    # schedule build every night
-    - cron: "0 0 * * *"
+    # schedule build every week
+    - cron: "0 0 */7 * *"
   workflow_dispatch:
     inputs:
       rebuild-only:
