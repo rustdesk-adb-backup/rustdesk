@@ -230,7 +230,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Wrong credentials", "Nome de usuário ou senha incorretos"),
         ("The verification code is incorrect or has expired", "O código de verificação está incorreto ou expirou"),
         ("Edit Tag", "Editar Tag"),
-        ("Forget Password", "Esqueci Minha Senha"),
+        ("Forget Password", "Limpar senha salva"),
         ("Favorites", "Favoritos"),
         ("Add to Favorites", "Adicionar aos Favoritos"),
         ("Remove from Favorites", "Remover dos Favoritos"),
@@ -399,7 +399,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("wayland_experiment_tip", "O suporte ao Wayland está em estágio experimental, use o X11 se precisar de acesso autônomo."),
         ("Right click to select tabs", "Clique com o botão direito para selecionar as guias"),
         ("Skipped", "Ignorado"),
-        ("Add to address book", "Adicionar ao livro de endereços"),
+        ("Add to address book", "Adicionar à lista de endereços"),
         ("Group", "Grupo"),
         ("Search", "Buscar"),
         ("Closed manually by web console", "Fechado manualmente pelo console da web"),
@@ -824,5 +824,7 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
         ("Trust duration (days)", "Duração da confiança (dias)"),
         ("Renew trust", "Renovar confiança"),
         ("install-directory-not-empty-tip", "A pasta selecionada não está vazia. A instalação pode excluir dados existentes. Considere escolher outra pasta."),
+        ("Request approval", "Solicitar aprovação"),
+        ("Forever", "Permanentemente"),
     ].iter().cloned().collect();
 }

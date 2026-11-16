@@ -160,6 +160,7 @@ pub fn session_add_sync(
     password: String,
     is_shared_password: bool,
     conn_token: Option<String>,
+    login_method: String,
 ) -> SyncReturn<String> {
     let add_res = session_add(
         &session_id,
@@ -174,6 +175,7 @@ pub fn session_add_sync(
         password,
         is_shared_password,
         conn_token,
+        &login_method,
     );
     // We can't put the remove call together with `std::env::var("IS_TERMINAL_ADMIN")`.
     // Because there are some `bail!` in `session_add()`, we must make sure `IS_TERMINAL_ADMIN` is removed at last.
@@ -3053,6 +3055,8 @@ pub fn session_get_common(
     if let Some(s) = sessions::get_session_by_session_id(&session_id) {
         let v = if key == "is_screenshot_supported" {
             s.is_screenshot_supported().to_string()
+        } else if key == "login_method" {
+            s.lc.read().unwrap().get_login_method().to_owned()
         } else {
             "".to_owned()
         };
@@ -3181,5 +3185,23 @@ pub mod server_side {
         _class: JClass,
     ) -> jboolean {
         jboolean::from(crate::server::is_clipboard_service_ok())
+    }
+
+    /// Keeps `enable-keyboard` in step with InputService when the Flutter UI is not running.
+    #[no_mangle]
+    pub unsafe extern "system" fn Java_ffi_FFI_setInputServiceOpen(
+        _env: JNIEnv,
+        _class: JClass,
+        open: jboolean,
+    ) {
+        // Config must not load before startServer sets APP_DIR; MainService syncs again after it.
+        if config::APP_DIR.read().unwrap().is_empty() {
+            return;
+        }
+        let key = super::keys::OPTION_ENABLE_KEYBOARD;
+        let value = if open == 0 { "N" } else { "Y" };
+        if let Err(e) = super::main_set_option(key.to_owned(), value.to_owned()) {
+            log::error!("Failed to sync input service state: {}", e);
+        }
     }
 }
